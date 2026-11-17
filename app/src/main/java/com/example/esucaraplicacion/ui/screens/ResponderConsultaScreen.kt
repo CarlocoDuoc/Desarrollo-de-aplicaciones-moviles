@@ -14,6 +14,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -22,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.esucaraplicacion.data.Repositorio
-import com.example.esucaraplicacion.notifications.Notificaciones
 import com.example.esucaraplicacion.ui.components.EsucarTopBar
 import com.example.esucaraplicacion.ui.components.EstadoVacio
 import com.example.esucaraplicacion.ui.components.TarjetaConsulta
@@ -34,6 +36,8 @@ fun ResponderConsultaScreen(
     onRespondida: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var enviando by remember { mutableStateOf(false) }
     val consulta = Repositorio.consulta(consultaId)
 
     var respuesta by rememberSaveable { mutableStateOf("") }
@@ -69,20 +73,27 @@ fun ResponderConsultaScreen(
                         onClick = {
                             intentoEnviar = true
                             if (respuesta.trim().length >= 5) {
-                                Repositorio.responder(consulta.id, respuesta)
-                                Notificaciones.mostrar(
-                                    context = context,
-                                    id = consulta.id,
-                                    titulo = "El docente respondió tu consulta",
-                                    texto = consulta.asunto
-                                )
-                                Toast.makeText(context, "Respuesta enviada", Toast.LENGTH_SHORT).show()
-                                onRespondida()
+                                scope.launch {
+                                    enviando = true
+                                    val r = Repositorio.responder(consulta.id, respuesta)
+                                    enviando = false
+                                    if (r.isSuccess) {
+                                        Toast.makeText(context, "Respuesta enviada", Toast.LENGTH_SHORT).show()
+                                        onRespondida()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            Repositorio.mensajeError(r.exceptionOrNull()),
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
                             }
                         },
+                        enabled = !enviando,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Enviar respuesta")
+                        Text(if (enviando) "Enviando…" else "Enviar respuesta")
                     }
                 }
             }

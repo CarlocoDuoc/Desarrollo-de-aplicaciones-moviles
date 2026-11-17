@@ -30,7 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -38,11 +37,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.esucaraplicacion.data.Usuario
-import com.example.esucaraplicacion.data.UsuarioDbHelper
+import com.example.esucaraplicacion.data.Repositorio
 import com.example.esucaraplicacion.ui.components.LogoEsucar
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun LoginScreen(
@@ -50,8 +47,6 @@ fun LoginScreen(
     onLoginExitoso: (Usuario) -> Unit,
     onIrARegistro: () -> Unit
 ) {
-    val context = LocalContext.current
-    val db = remember { UsuarioDbHelper.obtener(context) }
     val scope = rememberCoroutineScope()
 
     var nombre by rememberSaveable(nombreRegistrado) { mutableStateOf(nombreRegistrado) }
@@ -70,11 +65,14 @@ fun LoginScreen(
 
         scope.launch {
             cargando = true
-            val usuario = withContext(Dispatchers.IO) { db.autenticar(nombre, clave) }
-            cargando = false
+            val resultado = Repositorio.login(nombre, clave)
+            val usuario = resultado.getOrNull()
             if (usuario == null) {
-                errorGeneral = "Nombre de usuario o contraseña incorrectos"
+                cargando = false
+                errorGeneral = Repositorio.mensajeError(resultado.exceptionOrNull())
             } else {
+                Repositorio.cargar(usuario.nombre, usuario.rol)
+                cargando = false
                 onLoginExitoso(usuario)
             }
         }

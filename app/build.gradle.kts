@@ -16,6 +16,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        // URL del backend Spring Boot.
+        // 10.0.2.2 = el PC desde el emulador de Android Studio.
+        // En un celular físico usa la IP de tu PC (http://192.168.x.x:8080/) o la URL https del hosting.
+        buildConfigField("String", "API_URL", "\"http://10.0.2.2:8080/\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -32,6 +37,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -46,6 +52,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.gson)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

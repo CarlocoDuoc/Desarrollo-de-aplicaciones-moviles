@@ -2,6 +2,7 @@ package com.example.esucaraplicacion.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,6 +66,7 @@ fun HomeEstudianteScreen(
 ) {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
     PedirPermisoNotificaciones()
+    LaunchedEffect(pestana) { Repositorio.actualizar() }
 
     Scaffold(
         topBar = {
@@ -98,11 +101,24 @@ fun HomeEstudianteScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (pestana) {
-                0 -> TabAsignaturas(sesion, onAsignatura)
-                1 -> TabProgreso(sesion)
-                else -> TabConsultas(sesion)
+        Column(modifier = Modifier.padding(padding)) {
+            if (Repositorio.sinConexion) {
+                Text(
+                    "Sin conexión: solo se muestran los materiales descargados.",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                when (pestana) {
+                    0 -> TabAsignaturas(sesion, onAsignatura)
+                    1 -> TabProgreso(sesion)
+                    else -> TabConsultas(sesion)
+                }
             }
         }
     }

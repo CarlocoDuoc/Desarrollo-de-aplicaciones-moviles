@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.esucaraplicacion.data.Repositorio
 import com.example.esucaraplicacion.data.Rol
 import com.example.esucaraplicacion.data.Sesion
 import com.example.esucaraplicacion.data.Usuario
@@ -61,6 +62,7 @@ fun AppNavHost() {
         }
         nombreSesion = null
         rolSesion = null
+        Repositorio.limpiar()
     }
 
     fun redirigirSegunPerfil() {

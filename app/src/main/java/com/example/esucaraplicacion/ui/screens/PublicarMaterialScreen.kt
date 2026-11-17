@@ -14,6 +14,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.esucaraplicacion.data.Repositorio
 import com.example.esucaraplicacion.data.TipoMaterial
-import com.example.esucaraplicacion.notifications.Notificaciones
 import com.example.esucaraplicacion.ui.components.EsucarTopBar
 import com.example.esucaraplicacion.ui.components.Selector
 
@@ -34,6 +36,8 @@ fun PublicarMaterialScreen(
     onPublicado: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var enviando by remember { mutableStateOf(false) }
 
     var asignaturaId by rememberSaveable { mutableIntStateOf(-1) }
     var unidadId by rememberSaveable { mutableIntStateOf(-1) }
@@ -55,15 +59,17 @@ fun PublicarMaterialScreen(
         intentoEnviar = true
         if (asignatura == null || unidad == null || tipo == null || titulo.trim().length < 5) return
 
-        val nuevo = Repositorio.publicarMaterial(unidad.id, titulo, tipo, descripcion)
-        Notificaciones.mostrar(
-            context = context,
-            id = 1000 + nuevo.id,
-            titulo = "Nuevo material de estudio",
-            texto = "${asignatura.codigo}: ${nuevo.titulo}"
-        )
-        Toast.makeText(context, "Material publicado", Toast.LENGTH_SHORT).show()
-        onPublicado()
+        scope.launch {
+            enviando = true
+            val r = Repositorio.publicarMaterial(unidad.id, titulo, tipo, descripcion)
+            enviando = false
+            if (r.isSuccess) {
+                Toast.makeText(context, "Material publicado", Toast.LENGTH_SHORT).show()
+                onPublicado()
+            } else {
+                Toast.makeText(context, Repositorio.mensajeError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     Scaffold(topBar = { EsucarTopBar("Publicar material", onVolver = onVolver) }) { padding ->
@@ -122,8 +128,8 @@ fun PublicarMaterialScreen(
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(onClick = { publicar() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Publicar material")
+            Button(onClick = { publicar() }, enabled = !enviando, modifier = Modifier.fillMaxWidth()) {
+                Text(if (enviando) "Publicando…" else "Publicar material")
             }
         }
     }

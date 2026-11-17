@@ -30,7 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,11 +37,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.esucaraplicacion.data.Rol
-import com.example.esucaraplicacion.data.UsuarioDbHelper
+import com.example.esucaraplicacion.data.Repositorio
 import com.example.esucaraplicacion.ui.components.EsucarTopBar
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private val FORMATO_NOMBRE = Regex("^[A-Za-z0-9._-]{3,20}$")
 
@@ -51,8 +48,6 @@ fun RegistroScreen(
     onVolver: () -> Unit,
     onRegistrado: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val db = remember { UsuarioDbHelper.obtener(context) }
     val scope = rememberCoroutineScope()
 
     var nombre by rememberSaveable { mutableStateOf("") }
@@ -63,6 +58,7 @@ fun RegistroScreen(
     var intentoEnviar by rememberSaveable { mutableStateOf(false) }
     var nombreEnUso by rememberSaveable { mutableStateOf(false) }
     var cargando by remember { mutableStateOf(false) }
+    var errorGeneral by remember { mutableStateOf<String?>(null) }
 
     val rol = Rol.valueOf(rolNombre)
 
@@ -78,14 +74,21 @@ fun RegistroScreen(
     fun registrar() {
         intentoEnviar = true
         nombreEnUso = false
+        errorGeneral = null
         val valido = FORMATO_NOMBRE.matches(nombre.trim()) && clave.length >= 4 && repetir == clave
         if (!valido) return
 
         scope.launch {
             cargando = true
-            val usuario = withContext(Dispatchers.IO) { db.registrar(nombre, clave, rol) }
+            val resultado = Repositorio.registrar(nombre, clave, rol)
             cargando = false
-            if (usuario == null) nombreEnUso = true else onRegistrado(usuario.nombre)
+            val usuario = resultado.getOrNull()
+            val error = resultado.exceptionOrNull()
+            when {
+                usuario != null -> onRegistrado(usuario.nombre)
+                Repositorio.esConflicto(error) -> nombreEnUso = true
+                else -> errorGeneral = Repositorio.mensajeError(error)
+            }
         }
     }
 
@@ -153,6 +156,10 @@ fun RegistroScreen(
                     RadioButton(selected = rol == opcion, onClick = null)
                     Text(opcion.etiqueta, modifier = Modifier.padding(start = 8.dp))
                 }
+            }
+
+            errorGeneral?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
 
             Spacer(Modifier.height(8.dp))

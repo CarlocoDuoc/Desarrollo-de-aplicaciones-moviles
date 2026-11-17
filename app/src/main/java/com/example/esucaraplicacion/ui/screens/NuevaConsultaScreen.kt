@@ -14,6 +14,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +39,8 @@ fun NuevaConsultaScreen(
     onEnviada: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var enviando by remember { mutableStateOf(false) }
 
     val materialInicial = Repositorio.material(materialIdInicial)
     val unidadInicial = materialInicial?.let { Repositorio.unidad(it.unidadId) }
@@ -62,16 +67,24 @@ fun NuevaConsultaScreen(
             asunto.trim().length < 5 || contenido.trim().length < 10
         ) return
 
-        Repositorio.enviarConsulta(
-            emisor = sesion.nombre,
-            asignaturaId = asignatura.id,
-            unidadId = unidad.id,
-            materialId = material?.id,
-            asunto = asunto,
-            contenido = contenido
-        )
-        Toast.makeText(context, "Consulta enviada al docente", Toast.LENGTH_SHORT).show()
-        onEnviada()
+        scope.launch {
+            enviando = true
+            val r = Repositorio.enviarConsulta(
+                emisor = sesion.nombre,
+                asignaturaId = asignatura.id,
+                unidadId = unidad.id,
+                materialId = material?.id,
+                asunto = asunto,
+                contenido = contenido
+            )
+            enviando = false
+            if (r.isSuccess) {
+                Toast.makeText(context, "Consulta enviada al docente", Toast.LENGTH_SHORT).show()
+                onEnviada()
+            } else {
+                Toast.makeText(context, Repositorio.mensajeError(r.exceptionOrNull()), Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     Scaffold(topBar = { EsucarTopBar("Nueva consulta", onVolver = onVolver) }) { padding ->
@@ -138,8 +151,8 @@ fun NuevaConsultaScreen(
                 supportingText = { errorContenido?.let { Text(it) } },
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(onClick = { enviar() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Enviar consulta")
+            Button(onClick = { enviar() }, enabled = !enviando, modifier = Modifier.fillMaxWidth()) {
+                Text(if (enviando) "Enviando…" else "Enviar consulta")
             }
         }
     }
